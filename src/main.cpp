@@ -12,17 +12,21 @@ struct timezone
 	int  tz_dsttime;     /* type of dst correction */
 };
 
-constexpr unsigned int MAX_BOOTSTRAP_NODES = 20;
-
 prng_state _prng_state{};
 sockaddr_in good4[500]{};
 sockaddr_in6 good6[500]{};
-sockaddr_storage bootstrap_nodes[MAX_BOOTSTRAP_NODES]{};
-int num_bootstrap_nodes = 0;
 
 const unsigned char hash[20] = {
 	0x54, 0x57, 0x87, 0x89, 0xdf, 0xc4, 0x23, 0xee, 0xf6, 0x03,
 	0x1f, 0x81, 0x94, 0xa9, 0x3a, 0x16, 0x98, 0x8b, 0x72, 0x7b
+};
+
+std::list<std::pair<const std::string, short>> bootstrap_node_list
+{
+	std::make_pair("router.utorrent.com", 6881),
+	std::make_pair("router.bittorrent.com", 6881),
+	std::make_pair("dht.transmissionbt.com", 6881),
+	std::make_pair("dht.aelitis.com", 6881)
 };
 
 static void dht_callback(void* closure, int event_type, const unsigned char* info_hash, const void* data, size_t data_len)
@@ -160,15 +164,38 @@ int main(int argc, char* argv[])
 
 	fmt::print("Running...\n");
 
+	for (const auto& bootstrap_info : bootstrap_node_list)
 	{
-		sockaddr_in6 bootstrap_node{};
+		addrinfo hints{};
 
-		bootstrap_node.sin6_family = AF_INET6;
-		bootstrap_node.sin6_port = htons(6881);
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = SOCK_DGRAM;
+		hints.ai_protocol = IPPROTO_UDP;
 
-		inet_pton(AF_INET6, "2001:41d0:203:4cca:5::", &bootstrap_node.sin6_addr);
+		auto& host = bootstrap_info.first;
+		auto port = bootstrap_info.second;
+		addrinfo* results{};
 
-		dht_ping_node(reinterpret_cast<const sockaddr*>(&bootstrap_node), sizeof(bootstrap_node));
+		if (getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &results) != 0)
+		{
+			auto error_code = WSAGetLastError();
+
+			if (error_code == WSAHOST_NOT_FOUND)
+			{
+				continue;
+			}
+
+			fmt::print("[Error] getaddrinfo() failed: {}\n", error_code);
+			return 10;
+		}
+
+		for (auto ptr = results; ptr != nullptr; ptr = ptr->ai_next)
+		{
+			if ((ptr->ai_family == AF_INET && s4 >= 0) || (ptr->ai_family == AF_INET6 && s6 >= 0))
+			{
+				dht_ping_node(ptr->ai_addr, ptr->ai_addrlen);
+	}
+		}
 	}
 
 	while (true)
@@ -237,7 +264,7 @@ int main(int argc, char* argv[])
 			else
 			{
 				fmt::print("[Error] uh-oh...\n");
-				return 10;
+				return 11;
 			}
 		}
 
@@ -264,7 +291,7 @@ int main(int argc, char* argv[])
 				if (ret_val == EINVAL || ret_val == EFAULT)
 				{
 					fmt::print("[Error] Aborting!\n");
-					return 11;
+					return 12;
 				}
 				
 				to_sleep = 1;
@@ -298,7 +325,7 @@ int main(int argc, char* argv[])
 	if (dht_uninit() < 0)
 	{
 		fmt::print("[Error] Failed to uninitialize DHT\n");
-		return 12;
+		return 13;
 	}
 
 	closesocket(s4);
@@ -318,7 +345,7 @@ int main(int argc, char* argv[])
 		else
 		{
 			fmt::print("[Error] fopen_s() failed: {}\n", errno);
-			return 13;
+			return 14;
 		}
 	}
 
