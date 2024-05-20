@@ -1,7 +1,7 @@
 FetchContent_Declare(
 	dht
-	GIT_REPOSITORY	https://github.com/jech/dht.git
-	GIT_TAG			0bbb8f4a5bd914b60de5e9fbb51573aa33a1cf18
+	GIT_REPOSITORY	https://github.com/b1gbakedbean/dht.git
+	GIT_TAG			master
 )
 
 FetchContent_MakeAvailable(dht)
