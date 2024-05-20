@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
 	}
 
 	auto num4 = 500, num6 = 500;
-	auto total = dht_get_nodes(good4, &num4, good6, &num6);
+	auto total = dht_get_nodes(good4, nullptr, &num4, good6, nullptr, &num6);
 
 	fmt::print("Found {} ({} + {}) good nodes.\n", total, num4, num6);
 
