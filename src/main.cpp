@@ -404,18 +404,17 @@ int dht_blacklisted(const sockaddr* sa, int salen)
 
 void dht_hash(void* hash_return, int hash_size, const void* v1, int len1, const void* v2, int len2, const void* v3, int len3)
 {
+	unsigned char sha1_hash[20]{};
 	hash_state _hash_state{};
-
-	if (hash_size > 20)
-	{
-		memset(reinterpret_cast<char*>(hash_return) + 20, 0, hash_size - 20);
-	}
 
 	sha1_init(&_hash_state);
 	sha1_process(&_hash_state, reinterpret_cast<const unsigned char*>(v1), len1);
 	sha1_process(&_hash_state, reinterpret_cast<const unsigned char*>(v2), len2);
 	sha1_process(&_hash_state, reinterpret_cast<const unsigned char*>(v3), len3);
-	sha1_done(&_hash_state, reinterpret_cast<unsigned char*>(hash_return));
+	sha1_done(&_hash_state, sha1_hash);
+
+	memset(hash_return, 0, hash_size);
+	memcpy(hash_return, sha1_hash, hash_size);
 }
 
 int dht_random_bytes(void* buf, size_t size)
